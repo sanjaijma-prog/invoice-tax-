@@ -37,7 +37,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .logo img{max-height:56px;max-width:300px}
 .logo .fb{font:italic 800 20px Arial;color:#b3122a;letter-spacing:.5px}
 .doc h2{text-align:center;font-size:14px;margin:8px 0 6px;text-decoration:underline}
-.doc table{width:100%;border-collapse:collapse}
+.doc table{width:100%;border-collapse:collapse;table-layout:fixed}.doc td,.doc th{overflow-wrap:anywhere}.doc input,.doc textarea{min-width:0;max-width:100%}
 .doc td,.doc th{border:1px solid #000;padding:3px 5px;vertical-align:top;text-align:left}
 .doc .gap{margin-top:6px}
 .doc .ml{white-space:pre-line}
@@ -52,7 +52,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 @media print{
  @page{size:A4;margin:10mm}
  body{background:#fff}.noprint{display:none!important}
- .doc{box-shadow:none;margin:0;padding:0;width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ .doc{box-shadow:none;margin:0;padding:0 1px;width:100%;max-width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact}
  .doc input,.doc textarea{background:transparent!important}
 }
 </style></head><body>
