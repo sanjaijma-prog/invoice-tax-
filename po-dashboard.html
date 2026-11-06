@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PO Dashboard – Jai Maruthi Automation</title>
+<style>
+:root{--bg:#f3f5f7;--surface:#fff;--ink:#1c2430;--muted:#667085;--line:#d9dee5;--brand:#0f4c5c;--brand-ink:#fff;--accent:#e08a1e;--danger:#b42318}
+@media (prefers-color-scheme:dark){:root{--bg:#12171d;--surface:#1b222b;--ink:#e8ecf1;--muted:#98a2b3;--line:#2e3844;--brand:#4db3c9;--brand-ink:#0b1217;--accent:#f0a64a;--danger:#f97066}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--surface);border-bottom:1px solid var(--line)}
+h1{font-size:20px;margin:0}
+h2{font-size:16px;margin:0 0 12px}
+main{display:grid;grid-template-columns:300px 1fr;gap:16px;padding:16px 20px;max-width:1300px;margin:auto}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px}
+.col{display:flex;flex-direction:column;gap:16px}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 12px;border-radius:6px}
+button.primary{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+button.danger{color:var(--danger)}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.po-item{display:flex;justify-content:space-between;gap:8px;padding:10px;border:1px solid var(--line);border-radius:6px;margin-bottom:8px;cursor:pointer}
+.po-item.active{border-color:var(--brand);box-shadow:inset 3px 0 0 var(--brand)}
+.po-item small{color:var(--muted);display:block}
+.row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:10px}
+input,textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;margin-top:4px}
+.items-head,.items-row{display:grid;grid-template-columns:3fr 1fr 1fr 1fr auto;gap:6px;align-items:center}
+.items-head{font-size:12px;color:var(--muted);margin-bottom:4px}
+.items-row{margin-bottom:6px}
+.items-row input{margin:0}
+.items-row .amt{text-align:right;font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);font-size:14px}
+/* Preview (paper) */
+.paper{background:#fff;color:#111;padding:28px;border:1px solid var(--line);border-radius:4px;font-size:13px}
+.paper h3{margin:0;font-size:22px;letter-spacing:.5px}
+.paper .top{display:flex;justify-content:space-between;gap:16px;border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:14px}
+.paper table{width:100%;border-collapse:collapse;margin-top:12px}
+.paper th,.paper td{border:1px solid #999;padding:6px 8px;text-align:left}
+.paper th{background:#eee}
+.paper td.n,.paper th.n{text-align:right;font-variant-numeric:tabular-nums}
+.paper .tot td{font-weight:700}
+.paper .sign{margin-top:48px;display:flex;justify-content:space-between}
+@media print{
+  body{background:#fff}
+  header,.screen-only{display:none!important}
+  main{display:block;padding:0;max-width:none}
+  .panel{border:0;padding:0}
+  .paper{border:0;padding:0}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>📄 Purchase Order Dashboard</h1>
+  <button class="primary" id="printBtn">🖨 Print / Save PDF</button>
+</header>
+
+<main>
+  <section class="panel screen-only" aria-label="Purchase orders">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h2 style="margin:0">Purchase Orders</h2>
+      <button class="primary" id="newBtn">+ New PO</button>
+    </div>
+    <div id="list"></div>
+  </section>
+
+  <div class="col">
+    <section class="panel screen-only" id="editPanel" aria-label="Edit">
+      <h2>Edit</h2>
+      <div id="editor"></div>
+    </section>
+    <section class="panel" aria-label="Preview">
+      <h2 class="screen-only">Preview</h2>
+      <div id="preview"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+(function(){
+  var KEY="jma_po_data_v1";
+  var state={pos:[],current:null};
+
+  function load(){
+    try{var r=localStorage.getItem(KEY);if(r){state.pos=JSON.parse(r)||[]}}catch(e){}
+    if(!state.pos.length){state.pos=[blank()]}
+    state.current=state.pos[0].id;
+  }
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(state.pos))}catch(e){}}
+  function uid(){return "po"+Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
+  function nextNo(){
+    var n=state.pos.length+1;
+    return "JMA/PO/"+String(n).padStart(3,"0");
+  }
+  function blank(){
+    return {id:uid(),no:nextNo(),date:new Date().toISOString().slice(0,10),vendor:"",vendorAddr:"",gst:"",
+      items:[{desc:"",qty:1,rate:0,gstPct:18}],terms:"Payment within 30 days of invoice."};
+  }
+  function cur(){return state.pos.find(function(p){return p.id===state.current})||state.pos[0]}
+  function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+  function money(n){return "₹"+Number(n||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}
+  function totals(p){
+    var sub=0,tax=0;
+    p.items.forEach(function(i){var a=(+i.qty||0)*(+i.rate||0);sub+=a;tax+=a*(+i.gstPct||0)/100});
+    return {sub:sub,tax:tax,total:sub+tax};
+  }
+
+  function renderList(){
+    var el=document.getElementById("list");
+    el.innerHTML=state.pos.map(function(p){
+      var t=totals(p);
+      return '<div class="po-item'+(p.id===state.current?' active':'')+'" data-id="'+p.id+'" tabindex="0" role="button">'+
+        '<div><strong>'+esc(p.no)+'</strong><small>'+esc(p.vendor||"No vendor yet")+'</small></div>'+
+        '<div style="text-align:right"><div>'+money(t.total)+'</div><small>'+esc(p.date)+'</small></div></div>';
+    }).join("");
+  }
+
+  function renderEditor(){
+    var p=cur();
+    var h='<div class="row">'+
+      '<label>PO number<input data-f="no" value="'+esc(p.no)+'"></label>'+
+      '<label>Date<input type="date" data-f="date" value="'+esc(p.date)+'"></label>'+
+      '<label>Vendor name<input data-f="vendor" value="'+esc(p.vendor)+'"></label>'+
+      '<label>Vendor GSTIN<input data-f="gst" value="'+esc(p.gst)+'"></label></div>'+
+      '<label>Vendor address<textarea rows="2" data-f="vendorAddr">'+esc(p.vendorAddr)+'</textarea></label>'+
+      '<div class="items-head"><span>Item description</span><span>Qty</span><span>Rate</span><span>GST %</span><span></span></div>';
+    p.items.forEach(function(it,i){
+      h+='<div class="items-row">'+
+        '<input data-i="'+i+'" data-k="desc" value="'+esc(it.desc)+'" placeholder="Item">'+
+        '<input data-i="'+i+'" data-k="qty" type="number" min="0" step="any" value="'+esc(it.qty)+'">'+
+        '<input data-i="'+i+'" data-k="rate" type="number" min="0" step="any" value="'+esc(it.rate)+'">'+
+        '<input data-i="'+i+'" data-k="gstPct" type="number" min="0" step="any" value="'+esc(it.gstPct)+'">'+
+        '<button class="danger" data-del="'+i+'" aria-label="Remove item">✕</button></div>';
+    });
+    h+='<div style="margin:8px 0 14px"><button id="addItem">+ Add item</button></div>'+
+      '<label>Terms &amp; conditions<textarea rows="2" data-f="terms">'+esc(p.terms)+'</textarea></label>'+
+      '<button class="danger" id="delPO">Delete this PO</button>';
+    document.getElementById("editor").innerHTML=h;
+  }
+
+  function renderPreview(){
+    var p=cur(),t=totals(p);
+    var rows=p.items.map(function(it,i){
+      var a=(+it.qty||0)*(+it.rate||0);
+      return '<tr><td>'+(i+1)+'</td><td>'+esc(it.desc)+'</td><td class="n">'+esc(it.qty)+'</td><td class="n">'+money(it.rate)+'</td><td class="n">'+esc(it.gstPct)+'%</td><td class="n">'+money(a)+'</td></tr>';
+    }).join("");
+    document.getElementById("preview").innerHTML=
+      '<div class="paper">'+
+      '<div class="top"><div><h3>Jai Maruthi Automation</h3><div>Purchase Order</div></div>'+
+      '<div style="text-align:right"><div><strong>PO No:</strong> '+esc(p.no)+'</div><div><strong>Date:</strong> '+esc(p.date)+'</div></div></div>'+
+      '<div><strong>Vendor:</strong> '+esc(p.vendor)+'</div>'+
+      '<div style="white-space:pre-line">'+esc(p.vendorAddr)+'</div>'+
+      (p.gst?'<div><strong>GSTIN:</strong> '+esc(p.gst)+'</div>':'')+
+      '<table><thead><tr><th>#</th><th>Description</th><th class="n">Qty</th><th class="n">Rate</th><th class="n">GST</th><th class="n">Amount</th></tr></thead><tbody>'+rows+
+      '<tr class="tot"><td colspan="5" class="n">Subtotal</td><td class="n">'+money(t.sub)+'</td></tr>'+
+      '<tr class="tot"><td colspan="5" class="n">GST</td><td class="n">'+money(t.tax)+'</td></tr>'+
+      '<tr class="tot"><td colspan="5" class="n">Total</td><td class="n">'+money(t.total)+'</td></tr></tbody></table>'+
+      '<p><strong>Terms:</strong> '+esc(p.terms)+'</p>'+
+      '<div class="sign"><div>Vendor signature</div><div>Authorised signatory<br>Jai Maruthi Automation</div></div></div>';
+  }
+
+  function refreshLive(){save();renderList();renderPreview()}
+  function renderAll(){renderList();renderEditor();renderPreview()}
+
+  document.getElementById("list").addEventListener("click",function(e){
+    var el=e.target.closest(".po-item");if(!el)return;
+    state.current=el.dataset.id;renderAll();
+  });
+  document.getElementById("list").addEventListener("keydown",function(e){
+    if(e.key==="Enter"||e.key===" "){var el=e.target.closest(".po-item");if(el){e.preventDefault();state.current=el.dataset.id;renderAll()}}
+  });
+  document.getElementById("newBtn").addEventListener("click",function(){
+    var p=blank();state.pos.unshift(p);state.current=p.id;save();renderAll();
+  });
+  document.getElementById("printBtn").addEventListener("click",function(){window.print()});
+
+  var editor=document.getElementById("editor");
+  editor.addEventListener("input",function(e){
+    var p=cur(),t=e.target;
+    if(t.dataset.f){p[t.dataset.f]=t.value}
+    else if(t.dataset.k){p.items[+t.dataset.i][t.dataset.k]=t.value}
+    refreshLive();
+  });
+  editor.addEventListener("click",function(e){
+    var p=cur(),t=e.target;
+    if(t.id==="addItem"){p.items.push({desc:"",qty:1,rate:0,gstPct:18});save();renderEditor();renderPreview();renderList()}
+    else if(t.dataset.del!==undefined){
+      if(p.items.length>1){p.items.splice(+t.dataset.del,1);save();renderEditor();renderPreview();renderList()}
+    }
+    else if(t.id==="delPO"){
+      if(confirm("Delete "+p.no+"?")){
+        state.pos=state.pos.filter(function(x){return x.id!==p.id});
+        if(!state.pos.length)state.pos=[blank()];
+        state.current=state.pos[0].id;save();renderAll();
+      }
+    }
+  });
+
+  load();renderAll();
+})();
+</script>
+</body>
+</html>
