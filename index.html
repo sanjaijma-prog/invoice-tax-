@@ -166,12 +166,9 @@ function preview(id){const p=db.find(x=>x.id===id);const c=calc(p);$('#btnEdit')
  <tr><td>IGST @ ${p.igst}%</td><td class="r" style="border-right:0">${fmt(c.g)}</td></tr>
  <tr><td class="b">Total</td><td class="r b" style="border-right:0">${fmt(c.tot)}</td></tr></table>
  <table><colgroup><col style="width:70%"><col style="width:30%"></colgroup>
- <tr><td style="border-left:0;border-bottom:0;height:34mm"><b>Terms &amp; Conditions:</b><br>${esc(p.terms).replace(/\n/g,'<br>')}</td>
+ <tr><td style="border-left:0;border-bottom:0;min-height:34mm;height:34mm"><b>Terms &amp; Conditions:</b><br>${esc(p.terms).replace(/\n/g,'<br>')}<div class="qr" id="qr1" style="margin-top:6px"></div></td>
  <td style="border-right:0;border-bottom:0;color:#2a4bd7;font-size:7.5pt">Authorized Signatory</td></tr></table>`;
  const mk=(sel,txt)=>{const e=$(sel);e.innerHTML='';if(window.QRCode)new QRCode(e,{text:txt,width:70,height:70})};
- const top=document.createElement('div');top.style.cssText='padding:4px 0 0';top.innerHTML='<div class="qr" id="qr1"></div>';
- $('#sheet').after(top);top.className='qrwrap';
- document.querySelectorAll('.qrwrap').forEach((e,i,a)=>{if(i<a.length-1)e.remove()});
  mk('#qr1',`Company: ${p.qrCompany||p.bName}\nPO No: ${p.qrPoNo||p.poNo}\nPO Date: ${p.qrPoDate||dmy(p.poDate)}\nExpiry Date: ${p.qrExpiry||dmy(p.dueDate)}`);
 }
 go('dash');
