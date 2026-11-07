@@ -46,13 +46,13 @@ h3{margin:18px 0 8px;font-size:15px}
 .qr{width:70px;height:70px}
 .qr img,.qr canvas{max-width:100%;height:auto}
 
-@page{size:A4;margin:10mm}
+@page{size:A4;margin:0}
 @media print{
   html,body{margin:0!important;padding:0!important;background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   header.top,main>*:not(#view-preview),.noprint{display:none!important}
-  main{margin:0!important;padding:0!important;max-width:none!important}
+  main{margin:0!important;padding:10mm!important;max-width:none!important}
   .stage{padding:0!important;overflow:visible!important}
-  .sheet{width:100%!important;max-width:190mm;margin:0 auto!important;overflow:visible!important;border:1px solid #000!important}
+  .sheet{width:100%!important;max-width:none;margin:0!important;overflow:visible!important;border:1px solid #000!important}
   .sheet tr{page-break-inside:avoid}
 }
 </style>
@@ -116,7 +116,7 @@ function dash(){const el=$('#view-dash');
  <td style="white-space:nowrap"><button onclick="go('preview','${p.id}')">Preview</button> <button onclick="go('edit','${p.id}')">Edit</button> <button class="del" onclick="delPO('${p.id}')">Delete</button></td></tr>`).join('')+'</table>'}
 function resetLogo(){logo=DEFAULT_LOGO;try{localStorage.removeItem('po_logo')}catch(e){}alert('Default logo set')}
 function newPO(){const b=db[0]||{};const p={id:String(Date.now()),poNo:'',poDate:new Date().toISOString().slice(0,10),dueDate:'',qNo:'',qDate:'',vName:'',vAddr:'',vGst:'',dName:'',dAddr:'',dGst:'',
- bName:b.bName||'Jai Maruthi Automation',bAddr:b.bAddr||'',bGst:b.bGst||'',items:[{d:'',q:1,p:0}],cgst:9,sgst:9,igst:0,terms:b.terms||'',qrCompany:'',qrPoNo:'',qrPoDate:'',qrExpiry:''};
+ bName:b.bName||'Jai Maruthi Automation',bAddr:b.bAddr||'',bGst:b.bGst||'',items:[{d:'',q:1,p:0}],cgst:9,sgst:9,igst:0,terms:b.terms||'',qrCompany:'',qrPoNo:'',qrPoDate:'',qrExpiry:'',qrSize:70};
  db.unshift(p);save('po_db',db);go('edit',p.id)}
 function delPO(id){if(confirm('Delete this PO?')){db=db.filter(p=>p.id!==id);save('po_db',db);dash()}}
 
@@ -131,7 +131,7 @@ function edit(id){const p=db.find(x=>x.id===id);const el=$('#view-edit');
  <h3>Tax %</h3><div class="grid">${f('cgst','CGST %','number')}${f('sgst','SGST %','number')}${f('igst','IGST %','number')}</div>
  <h3>Terms & Conditions</h3>${a('terms','One per line')}
  <h3>QR code details (scan panna idhu mattum varum)</h3>
- <div class="grid">${f('qrCompany','Company name')}${f('qrPoNo','PO No')}${f('qrPoDate','PO Date')}${f('qrExpiry','Expiry Date')}</div>
+ <div class="grid">${f('qrCompany','Company name')}${f('qrPoNo','PO No')}${f('qrPoDate','PO Date')}${f('qrExpiry','Expiry Date')}${f('qrSize','QR size (px, default 70)','number')}</div>
  <div style="font-size:12px;color:var(--mute);margin-top:6px">Empty-a vittaa PO details-la irundhu auto-va edukkum. Maatha vendiyadhu mattum type pannunga.</div>
  <div class="bar"><button class="pri" onclick="go('preview','${id}')">Save & Preview</button><button onclick="go('dash')">Back</button></div></div>`;
  el.querySelectorAll('[data-k]').forEach(i=>i.oninput=()=>{p[i.dataset.k]=i.type==='number'?+i.value:i.value;save('po_db',db)});
@@ -143,7 +143,7 @@ function upd(id,n,k,v){const p=db.find(x=>x.id===id);p.items[n][k]=k==='d'?v:+v;
 function addItem(id){const p=db.find(x=>x.id===id);p.items.push({d:'',q:1,p:0});save('po_db',db);items(p)}
 function rm(id,n){const p=db.find(x=>x.id===id);p.items.splice(n,1);save('po_db',db);items(p)}
 
-function preview(id){const p=db.find(x=>x.id===id);const c=calc(p);$('#btnEdit').onclick=()=>go('edit',id);
+function preview(id){const p=db.find(x=>x.id===id);const c=calc(p),qs=+p.qrSize||70;$('#btnEdit').onclick=()=>go('edit',id);
  const rows=p.items.map((i,n)=>`<tr><td class="c">${n+1}</td><td>${esc(i.d)}</td><td class="r">${i.q}</td><td class="r">${i.p}</td><td class="r">${fmt(i.q*i.p)}</td></tr>`).join('');
  $('#sheet').innerHTML=`
  <div class="logo">${logo?`<img src="${logo}" alt="logo">`:'<b style="font-size:14pt">JAI MARUTHI AUTOMATION</b>'}</div>
@@ -166,9 +166,9 @@ function preview(id){const p=db.find(x=>x.id===id);const c=calc(p);$('#btnEdit')
  <tr><td>IGST @ ${p.igst}%</td><td class="r" style="border-right:0">${fmt(c.g)}</td></tr>
  <tr><td class="b">Total</td><td class="r b" style="border-right:0">${fmt(c.tot)}</td></tr></table>
  <table><colgroup><col style="width:70%"><col style="width:30%"></colgroup>
- <tr><td style="border-left:0;border-bottom:0;min-height:34mm;height:34mm"><b>Terms &amp; Conditions:</b><br>${esc(p.terms).replace(/\n/g,'<br>')}<div class="qr" id="qr1" style="margin-top:6px"></div></td>
+ <tr><td style="border-left:0;border-bottom:0;min-height:34mm;height:34mm"><b>Terms &amp; Conditions:</b><br>${esc(p.terms).replace(/\n/g,'<br>')}<div class="qr" id="qr1" style="margin-top:6px;width:${qs}px;height:${qs}px"></div></td>
  <td style="border-right:0;border-bottom:0;color:#2a4bd7;font-size:7.5pt">Authorized Signatory</td></tr></table>`;
- const mk=(sel,txt)=>{const e=$(sel);e.innerHTML='';if(window.QRCode)new QRCode(e,{text:txt,width:70,height:70})};
+ const mk=(sel,txt)=>{const e=$(sel);e.innerHTML='';if(window.QRCode)new QRCode(e,{text:txt,width:qs,height:qs})};
  mk('#qr1',`Company: ${p.qrCompany||p.bName}\nPO No: ${p.qrPoNo||p.poNo}\nPO Date: ${p.qrPoDate||dmy(p.poDate)}\nExpiry Date: ${p.qrExpiry||dmy(p.dueDate)}`);
 }
 go('dash');
