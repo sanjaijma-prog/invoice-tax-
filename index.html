@@ -116,11 +116,12 @@ function dash(){const el=$('#view-dash');
  <td style="white-space:nowrap"><button onclick="go('preview','${p.id}')">Preview</button> <button onclick="go('edit','${p.id}')">Edit</button> <button class="del" onclick="delPO('${p.id}')">Delete</button></td></tr>`).join('')+'</table>'}
 function resetLogo(){logo=DEFAULT_LOGO;try{localStorage.removeItem('po_logo')}catch(e){}alert('Default logo set')}
 function newPO(){const b=db[0]||{};const p={id:String(Date.now()),poNo:'',poDate:new Date().toISOString().slice(0,10),dueDate:'',qNo:'',qDate:'',vName:'',vAddr:'',vGst:'',dName:'',dAddr:'',dGst:'',
- bName:b.bName||'Jai Maruthi Automation',bAddr:b.bAddr||'',bGst:b.bGst||'',items:[{d:'',q:1,p:0}],cgst:9,sgst:9,igst:0,terms:b.terms||'',qrCompany:'',qrPoNo:'',qrPoDate:'',qrExpiry:'',qrSize:70};
+ bName:b.bName||'Jai Maruthi Automation',bAddr:b.bAddr||'',bGst:b.bGst||'',items:[{d:'',q:1,p:0}],cgst:9,sgst:9,igst:0,terms:b.terms||'',qrCompany:'',qrPoNo:'',qrPoDate:'',qrExpiry:'',qrSize:70,signFor:b.signFor||'',signLabel:b.signLabel||'Authorized Signatory',signImg:b.signImg||'',signH:b.signH||40};
  db.unshift(p);save('po_db',db);go('edit',p.id)}
 function delPO(id){if(confirm('Delete this PO?')){db=db.filter(p=>p.id!==id);save('po_db',db);dash()}}
 
 function edit(id){const p=db.find(x=>x.id===id);const el=$('#view-edit');
+ if(p.signLabel===undefined)p.signLabel='Authorized Signatory';if(p.signFor===undefined)p.signFor='';if(p.signImg===undefined)p.signImg='';if(!p.signH)p.signH=40;
  const f=(k,l,t='text')=>`<div><label>${l}</label><input type="${t}" data-k="${k}" value="${esc(p[k])}"></div>`;
  const a=(k,l)=>`<div><label>${l}</label><textarea data-k="${k}">${esc(p[k])}</textarea></div>`;
  el.innerHTML=`<div class="form"><h3 style="margin-top:0">PO details</h3><div class="grid">${f('poNo','PO No')}${f('poDate','PO Date','date')}${f('dueDate','Due Date','date')}${f('qNo','Quotation No')}${f('qDate','Quotation Date','date')}</div>
@@ -133,9 +134,15 @@ function edit(id){const p=db.find(x=>x.id===id);const el=$('#view-edit');
  <h3>QR code details (scan panna idhu mattum varum)</h3>
  <div class="grid">${f('qrCompany','Company name')}${f('qrPoNo','PO No')}${f('qrPoDate','PO Date')}${f('qrExpiry','Expiry Date')}${f('qrSize','QR size (px, default 70)','number')}</div>
  <div style="font-size:12px;color:var(--mute);margin-top:6px">Empty-a vittaa PO details-la irundhu auto-va edukkum. Maatha vendiyadhu mattum type pannunga.</div>
+ <h3>Authorized Signature</h3>
+ <div class="grid">${f('signFor','Company line (e.g. FOR JAI MARUTHI AUTOMATION)')}${f('signLabel','Signature label')}${f('signH','Signature image height (px, default 40)','number')}
+ <div><label>Signature image (optional)</label><input type="file" accept="image/*" id="signIn"><div id="signPrev" style="margin-top:6px"></div><button type="button" class="del" style="margin-top:6px" onclick="clearSign('${id}')">Remove signature image</button></div></div>
  <div class="bar"><button class="pri" onclick="go('preview','${id}')">Save & Preview</button><button onclick="go('dash')">Back</button></div></div>`;
  el.querySelectorAll('[data-k]').forEach(i=>i.oninput=()=>{p[i.dataset.k]=i.type==='number'?+i.value:i.value;save('po_db',db)});
- items(p)}
+ items(p);signPrev(p);
+ $('#signIn').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const m=400,k=Math.min(1,m/im.width),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);p.signImg=c.toDataURL('image/png');save('po_db',db);signPrev(p)};im.src=r.result};r.readAsDataURL(f)}}
+function signPrev(p){const e=$('#signPrev');if(e)e.innerHTML=p.signImg?`<img src="${p.signImg}" style="max-height:50px;max-width:160px;border:1px dashed var(--line)">`:'<span style="font-size:12px;color:var(--mute)">No image (blank space for hand signature)</span>'}
+function clearSign(id){const p=db.find(x=>x.id===id);p.signImg='';save('po_db',db);signPrev(p);const i=$('#signIn');if(i)i.value=''}
 function items(p){$('#items').innerHTML=p.items.map((it,n)=>`<div class="row"><input placeholder="Description" value="${esc(it.d)}" oninput="upd('${p.id}',${n},'d',this.value)">
  <input type="number" placeholder="Qty" value="${it.q}" oninput="upd('${p.id}',${n},'q',this.value)"><input type="number" placeholder="Price" value="${it.p}" oninput="upd('${p.id}',${n},'p',this.value)">
  <button class="del" onclick="rm('${p.id}',${n})">✕</button></div>`).join('')}
@@ -167,7 +174,7 @@ function preview(id){const p=db.find(x=>x.id===id);const c=calc(p),qs=+p.qrSize|
  <tr><td class="b">Total</td><td class="r b" style="border-right:0">${fmt(c.tot)}</td></tr></table>
  <table><colgroup><col style="width:70%"><col style="width:30%"></colgroup>
  <tr><td style="border-left:0;border-bottom:0;min-height:34mm;height:34mm"><b>Terms &amp; Conditions:</b><br>${esc(p.terms).replace(/\n/g,'<br>')}<div class="qr" id="qr1" style="margin-top:6px;width:${qs}px;height:${qs}px"></div></td>
- <td style="border-right:0;border-bottom:0;color:#2a4bd7;font-size:7.5pt">Authorized Signatory</td></tr></table>`;
+ <td style="border-right:0;border-bottom:0;color:#2a4bd7;font-size:7.5pt"><div style="min-height:30mm;display:flex;flex-direction:column;justify-content:space-between;align-items:center;text-align:center"><div style="font-weight:700">${esc(p.signFor||'')}</div>${p.signImg?`<img src="${p.signImg}" alt="signature" style="height:${+p.signH||40}px;max-width:90%;object-fit:contain">`:'<div></div>'}<div>${esc(p.signLabel===undefined?'Authorized Signatory':p.signLabel)}</div></div></td></tr></table>`;
  const mk=(sel,txt)=>{const e=$(sel);e.innerHTML='';if(window.QRCode)new QRCode(e,{text:txt,width:qs,height:qs})};
  mk('#qr1',`Company: ${p.qrCompany||p.bName}\nPO No: ${p.qrPoNo||p.poNo}\nPO Date: ${p.qrPoDate||dmy(p.poDate)}\nExpiry Date: ${p.qrExpiry||dmy(p.dueDate)}`);
 }
